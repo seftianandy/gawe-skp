@@ -1,18 +1,20 @@
+x-app-service: &app-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - .env.production
+  volumes:
+    - storage-data:/var/www/html/storage
+    - cache-data:/var/www/html/bootstrap/cache
+
 services:
   app:
-    build:
-      context: .
-      target: production
-    image: gawe-skp:production
+    <<: *app-service
     container_name: gawe-skp-app
     restart: unless-stopped
-    env_file:
-      - .env.production
     ports:
       - "3526:80"
-    volumes:
-      - storage-data:/var/www/html/storage
-      - cache-data:/var/www/html/bootstrap/cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -20,15 +22,10 @@ services:
       - gawe-skp
 
   queue:
-    image: gawe-skp:production
+    <<: *app-service
     container_name: gawe-skp-queue
     restart: unless-stopped
-    env_file:
-      - .env.production
     command: php artisan queue:work --sleep=3 --tries=1 --timeout=90
-    volumes:
-      - storage-data:/var/www/html/storage
-      - cache-data:/var/www/html/bootstrap/cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,15 +33,10 @@ services:
       - gawe-skp
 
   scheduler:
-    image: gawe-skp:production
+    <<: *app-service
     container_name: gawe-skp-scheduler
     restart: unless-stopped
-    env_file:
-      - .env.production
     command: php artisan schedule:work
-    volumes:
-      - storage-data:/var/www/html/storage
-      - cache-data:/var/www/html/bootstrap/cache
     depends_on:
       postgres:
         condition: service_healthy

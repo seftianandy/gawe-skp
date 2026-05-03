@@ -61,7 +61,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && mkdir -p storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-EXPOSE 3526
+EXPOSE 80
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
