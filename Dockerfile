@@ -16,9 +16,14 @@ FROM node:20-bookworm AS frontend
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
+
+COPY .env.production .env
 
 COPY . .
+
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
 RUN npm run build
 
 FROM php:8.4-fpm-bookworm AS production
