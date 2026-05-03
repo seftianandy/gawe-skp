@@ -15,12 +15,20 @@ FROM node:20-bookworm AS frontend
 
 WORKDIR /app
 
+# ✅ Install PHP CLI agar wayfinder bisa jalankan php artisan
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        php-cli \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm install
 
 COPY .env.production .env
 
 COPY . .
+
+# ✅ Copy vendor dari stage composer agar php artisan bisa jalan
+COPY --from=vendor /app/vendor ./vendor
 
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
