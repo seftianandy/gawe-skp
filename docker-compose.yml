@@ -1,0 +1,93 @@
+services:
+  app:
+    build:
+      context: .
+      target: production
+    image: gawe-skp:production
+    container_name: gawe-skp-app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    ports:
+      - "3526:80"
+    volumes:
+      - storage-data:/var/www/html/storage
+      - cache-data:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gawe-skp
+
+  queue:
+    image: gawe-skp:production
+    container_name: gawe-skp-queue
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: php artisan queue:work --sleep=3 --tries=1 --timeout=90
+    volumes:
+      - storage-data:/var/www/html/storage
+      - cache-data:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gawe-skp
+
+  scheduler:
+    image: gawe-skp:production
+    container_name: gawe-skp-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    command: php artisan schedule:work
+    volumes:
+      - storage-data:/var/www/html/storage
+      - cache-data:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gawe-skp
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gawe-skp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-gawe_skp}
+      POSTGRES_USER: ${DB_USERNAME:-gawe_skp}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "1245:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-gawe_skp} -d ${DB_DATABASE:-gawe_skp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gawe-skp
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gawe-skp-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - gawe-skp
+    profiles:
+      - tunnel
+
+volumes:
+  postgres-data:
+  storage-data:
+  cache-data:
+
+networks:
+  gawe-skp:
+    driver: bridge
