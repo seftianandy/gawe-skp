@@ -23,8 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package.json package-lock.json ./
 RUN npm install
 
-COPY .env.production .env
-
 COPY . .
 
 # ✅ Copy vendor dari stage composer agar php artisan bisa jalan
