@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
 
         Password::defaults(function (): ?Password {
             return app()->isProduction()
-                ? Password::min(12)
+                ? Password::min(8)
                     ->mixedCase()
                     ->letters()
                     ->numbers()
