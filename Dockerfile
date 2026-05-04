@@ -1,41 +1,17 @@
-FROM composer:2.8 AS vendor
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-RUN composer install \
-    --no-dev \
-    --no-interaction \
-    --no-progress \
-    --prefer-dist \
-    --optimize-autoloader \
-    --no-scripts
-
 FROM node:20-bookworm AS frontend
 
 WORKDIR /app
-
-# ✅ Install PHP CLI agar wayfinder bisa jalankan php artisan
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        php-cli \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm install
 
 COPY . .
-
-# ✅ Copy vendor dari stage composer agar php artisan bisa jalan
-COPY --from=vendor /app/vendor ./vendor
-
-ENV NODE_OPTIONS="--max-old-space-size=2048"
-
 RUN npm run build
+
 
 FROM php:8.4-fpm-bookworm AS production
 
-ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    APP_ENV=production
+ENV APP_ENV=production
 
 WORKDIR /var/www/html
 
@@ -60,9 +36,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=vendor /app/vendor ./vendor
-COPY --from=frontend /app/public/build ./public/build
+# Copy semua (termasuk vendor hasil dari local)
 COPY . .
+
+# Timpa build frontend dari stage node
+COPY --from=frontend /app/public/build ./public/build
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
