@@ -4,35 +4,31 @@ set -e
 echo "🚀 Starting Laravel container..."
 
 # Pastikan folder ada
-mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache
+mkdir -p storage bootstrap/cache
+mkdir -p storage/framework/views
 
 # Permission
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 
-# 🔑 CEK & GENERATE APP_KEY (DI SINI TEMPATNYA)
-if ! php artisan key:generate --show | grep -q "base64"; then
+# Generate APP_KEY kalau kosong
+if [ -z "$APP_KEY" ]; then
     echo "🔑 Generating APP_KEY..."
     php artisan key:generate --force
 fi
 
 # Storage link
-if [ ! -L /var/www/html/public/storage ]; then
-    php artisan storage:link || true
-fi
+php artisan storage:link || true
 
-# Clear cache lama
-php artisan config:clear || true
-php artisan cache:clear || true
-php artisan route:clear || true
-php artisan view:clear || true
+# Clear cache (aman)
+php artisan optimize:clear || true
 
-# Package discover
-php artisan package:discover
+# Package discover (amanin)
+php artisan package:discover || true
 
-# Cache ulang
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# Cache ulang (jangan pakai view:cache dulu!)
+php artisan config:cache || true
+php artisan route:cache || true
 
 # Migration
 php artisan migrate --force || true
