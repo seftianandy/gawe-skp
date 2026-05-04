@@ -1,14 +1,3 @@
-FROM node:20-bookworm AS frontend
-
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-
 FROM php:8.4-fpm-bookworm AS production
 
 ENV APP_ENV=production
@@ -36,11 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zip \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy semua (termasuk vendor hasil dari local)
+# ✅ Copy semua (sudah termasuk vendor & hasil build frontend)
 COPY . .
-
-# Timpa build frontend dari stage node
-COPY --from=frontend /app/public/build ./public/build
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -54,4 +40,4 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
 EXPOSE 80
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
