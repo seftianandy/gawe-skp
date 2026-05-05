@@ -8,8 +8,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Schema;
-use Throwable;
 use Inertia\Inertia;
+use Throwable;
 
 class HasilKerjaPdfController extends Controller
 {
@@ -20,6 +20,7 @@ class HasilKerjaPdfController extends Controller
             'indikatorKinerjaMaster',
             'indikatorKinerja.rencanaAksi',
             'indikatorKinerja.realisasi.buktiFoto',
+            'lampiranFiles',
         ];
 
         if (Schema::hasColumn('rencana_aksi', 'hasil_kerja_id')) {
@@ -57,6 +58,7 @@ class HasilKerjaPdfController extends Controller
             'indikatorKinerjaMaster',
             'indikatorKinerja.rencanaAksi',
             'indikatorKinerja.realisasi.buktiFoto',
+            'lampiranFiles',
         ];
 
         if (Schema::hasColumn('rencana_aksi', 'hasil_kerja_id')) {
@@ -85,6 +87,7 @@ class HasilKerjaPdfController extends Controller
 
         try {
             $googleDrive->uploadHasilKerjaPdf($hasilKerja->laporan->user, $hasilKerja->laporan, $hasilKerja, $temporaryPath);
+            $googleDrive->uploadHasilKerjaLampiranFiles($hasilKerja->laporan->user, $hasilKerja->laporan, $hasilKerja);
         } catch (Throwable $exception) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Upload Google Drive gagal: '.$exception->getMessage()]);
 

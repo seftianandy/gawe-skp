@@ -9,15 +9,16 @@ use App\Models\Laporan;
 use App\Services\GoogleDriveService;
 use App\Services\SkpAssetCleanupService;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
-use Throwable;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class LaporanController extends Controller
 {
@@ -87,6 +88,7 @@ class LaporanController extends Controller
             'hasilKerja.indikatorKinerja.rencanaAksi' => fn (HasMany $query) => $query->orderBy('id'),
             'hasilKerja.indikatorKinerja.realisasi' => fn (HasMany $query) => $query->orderBy('id'),
             'hasilKerja.indikatorKinerja.realisasi.buktiFoto' => fn (HasMany $query) => $query->orderBy('id'),
+            'hasilKerja.lampiranFiles' => fn (HasMany $query) => $query->orderBy('id'),
             'perilakuKerja' => fn (HasMany $query) => $query->orderBy('id'),
             'perilakuKerja.buktiPerilaku' => fn (HasMany $query) => $query->orderBy('id'),
         ];
@@ -161,6 +163,7 @@ class LaporanController extends Controller
             'hasilKerja.indikatorKinerjaMaster',
             'hasilKerja.indikatorKinerja.rencanaAksi',
             'hasilKerja.indikatorKinerja.realisasi.buktiFoto',
+            'hasilKerja.lampiranFiles',
             'perilakuKerja.buktiPerilaku',
         ]);
 
@@ -174,6 +177,7 @@ class LaporanController extends Controller
 
                 try {
                     $googleDrive->uploadHasilKerjaPdf($laporan->user, $laporan, $hasilKerja, $temporaryPath);
+                    $googleDrive->uploadHasilKerjaLampiranFiles($laporan->user, $laporan, $hasilKerja);
                 } finally {
                     @unlink($temporaryPath);
                 }
@@ -269,27 +273,33 @@ class LaporanController extends Controller
                         'file_path' => $bukti->file_path,
                         'url' => Storage::disk('public')->url($bukti->file_path),
                     ])->values(),
+                    'lampiran_files' => $hasilKerja->lampiranFiles->map(fn ($lampiran) => [
+                        'id' => $lampiran->id,
+                        'nama_file' => $lampiran->nama_file,
+                        'file_path' => $lampiran->file_path,
+                        'url' => Storage::disk('public')->url($lampiran->file_path),
+                    ])->values(),
                     'indikators' => $hasilKerja->indikatorKinerja->map(fn ($indikator) => [
-                    'id' => $indikator->id,
-                    'deskripsi' => $indikator->deskripsi,
-                    'satuan' => $indikator->satuan,
-                    'target' => $indikator->target,
-                    'kategori' => $indikator->kategori,
-                    'rencana_aksi' => $indikator->rencanaAksi->map(fn ($rencana) => [
-                        'id' => $rencana->id,
-                        'deskripsi' => $rencana->deskripsi,
-                    ])->values(),
-                    'realisasi' => $indikator->realisasi->map(fn ($realisasi) => [
-                        'id' => $realisasi->id,
-                        'tanggal' => $realisasi->tanggal?->toDateString(),
-                        'output' => $realisasi->output,
-                        'keterangan' => $realisasi->keterangan,
-                        'bukti_foto' => $realisasi->buktiFoto->map(fn ($bukti) => [
-                            'id' => $bukti->id,
-                            'file_path' => $bukti->file_path,
-                            'url' => Storage::disk('public')->url($bukti->file_path),
+                        'id' => $indikator->id,
+                        'deskripsi' => $indikator->deskripsi,
+                        'satuan' => $indikator->satuan,
+                        'target' => $indikator->target,
+                        'kategori' => $indikator->kategori,
+                        'rencana_aksi' => $indikator->rencanaAksi->map(fn ($rencana) => [
+                            'id' => $rencana->id,
+                            'deskripsi' => $rencana->deskripsi,
                         ])->values(),
-                    ])->values(),
+                        'realisasi' => $indikator->realisasi->map(fn ($realisasi) => [
+                            'id' => $realisasi->id,
+                            'tanggal' => $realisasi->tanggal?->toDateString(),
+                            'output' => $realisasi->output,
+                            'keterangan' => $realisasi->keterangan,
+                            'bukti_foto' => $realisasi->buktiFoto->map(fn ($bukti) => [
+                                'id' => $bukti->id,
+                                'file_path' => $bukti->file_path,
+                                'url' => Storage::disk('public')->url($bukti->file_path),
+                            ])->values(),
+                        ])->values(),
                     ])->values(),
                 ];
             })->values(),
@@ -340,7 +350,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, IndikatorKinerjaMaster>
+     * @return Collection<int, IndikatorKinerjaMaster>
      */
     protected function indikatorKinerjaMastersFor(Laporan $laporan)
     {

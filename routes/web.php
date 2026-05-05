@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportLaporanPdfController;
-use App\Http\Controllers\GenerateLaporanAiController;
 use App\Http\Controllers\GenerateHasilKerjaAiController;
+use App\Http\Controllers\GenerateLaporanAiController;
 use App\Http\Controllers\GeneratePerilakuAiController;
 use App\Http\Controllers\GoogleController;
 use App\Http\Controllers\HasilKerjaController;
@@ -19,6 +19,9 @@ Route::inertia('/', 'Welcome', [
     'canRegister' => Features::enabled(Features::registration()),
 ])->name('home');
 
+Route::inertia('/terms-of-service', 'Legal/TermsOfService')->name('terms');
+Route::inertia('/privacy-policy', 'Legal/PrivacyPolicy')->name('privacy-policy');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
@@ -33,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('hasil-kerja/{hasil_kerja}/pdf', [HasilKerjaPdfController::class, 'export'])->name('hasil-kerja.pdf');
     Route::get('perilaku/{perilaku_kerja}/pdf', [PerilakuPdfController::class, 'export'])->name('perilaku.pdf');
     Route::post('hasil-kerja/{hasil_kerja}/upload-drive', [HasilKerjaPdfController::class, 'upload'])->name('hasil-kerja.upload-drive');
+    Route::post('hasil-kerja/{id}/lampiran', [HasilKerjaController::class, 'uploadLampiran'])->name('hasil-kerja.upload-lampiran');
     Route::post('perilaku/{perilaku_kerja}/upload-drive', [PerilakuPdfController::class, 'upload'])->name('perilaku.upload-drive');
     Route::post('laporan/{laporan}/upload-drive', [LaporanController::class, 'uploadAllToDrive'])->name('laporan.upload-drive');
     Route::get('google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');

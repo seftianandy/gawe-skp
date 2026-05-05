@@ -1,7 +1,9 @@
 <?php
 
-use App\Models\Laporan;
+use App\Models\HasilKerja;
 use App\Models\IndikatorKinerjaMaster;
+use App\Models\Laporan;
+use App\Models\PerilakuKerja;
 use App\Models\User;
 use App\Services\GoogleDriveService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,7 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-function createAiLaporanFor(User $user, array $attributes = []): Laporan {
+function createAiLaporanFor(User $user, array $attributes = []): Laporan
+{
     return Laporan::create([
         'user_id' => $user->id,
         'periode' => '2026-05-01',
@@ -173,8 +176,6 @@ test('generate ai does not change hasil kerja and perilaku display order', funct
 });
 
 test('upload all to drive sends hasil kerja and perilaku pdfs through google drive service', function () {
-    Storage::fake('public');
-
     $user = User::factory()->create([
         'google_id' => 'google-user-123',
         'google_refresh_token' => 'refresh-token',
@@ -203,6 +204,11 @@ test('upload all to drive sends hasil kerja and perilaku pdfs through google dri
         'target' => '1',
         'kategori' => 'kualitas',
     ]);
+    $hasilKerja->lampiranFiles()->create([
+        'nama_file' => 'lampiran-1.pdf',
+        'file_path' => 'lampiran/'.$hasilKerja->id.'/lampiran-1.pdf',
+    ]);
+    Storage::disk('public')->put('lampiran/'.$hasilKerja->id.'/lampiran-1.pdf', '%PDF-1.4');
 
     $perilaku = $laporan->perilakuKerja()->create([
         'nama' => 'Akuntabel',
@@ -215,19 +221,31 @@ test('upload all to drive sends hasil kerja and perilaku pdfs through google dri
 
     $calls = (object) ['items' => []];
 
-    app()->instance(GoogleDriveService::class, new class ($calls) extends GoogleDriveService {
-        public function __construct(private object $calls)
+    app()->instance(GoogleDriveService::class, new class($calls) extends GoogleDriveService
+    {
+        public function __construct(private object $calls) {}
+
+        public function uploadFile(User $user, string $filePath, string $fileName, string $folderPath): string
         {
+            $this->calls->items[] = [
+                str_starts_with($fileName, 'lampiran-') ? 'lampiran' : 'other',
+                $user->id,
+                $fileName,
+                $folderPath,
+                is_file($filePath),
+            ];
+
+            return 'drive-file';
         }
 
-        public function uploadHasilKerjaPdf($user, $laporan, $hasilKerja, string $localPath)
+        public function uploadHasilKerjaPdf(User $user, Laporan $laporan, HasilKerja $hasilKerja, string $localPath): string
         {
             $this->calls->items[] = ['hasil', $user->id, $laporan->id, $hasilKerja->id, is_file($localPath)];
 
             return 'drive-file-hasil';
         }
 
-        public function uploadPerilakuPdf($user, $laporan, $perilaku, string $localPath): string
+        public function uploadPerilakuPdf(User $user, Laporan $laporan, PerilakuKerja $perilaku, string $localPath): string
         {
             $this->calls->items[] = ['perilaku', $user->id, $laporan->id, $perilaku->id, is_file($localPath)];
 
@@ -239,9 +257,11 @@ test('upload all to drive sends hasil kerja and perilaku pdfs through google dri
         ->post(route('laporan.upload-drive', $laporan))
         ->assertRedirect(route('laporan.show', $laporan));
 
-    expect($calls->items)->toHaveCount(2)
+    expect($calls->items)->toHaveCount(3)
         ->and($calls->items[0][0])->toBe('hasil')
-        ->and($calls->items[1][0])->toBe('perilaku')
+        ->and($calls->items[1][0])->toBe('lampiran')
+        ->and($calls->items[2][0])->toBe('perilaku')
         ->and($calls->items[0][4])->toBeTrue()
-        ->and($calls->items[1][4])->toBeTrue();
+        ->and($calls->items[1][4])->toBeTrue()
+        ->and($calls->items[2][4])->toBeTrue();
 });

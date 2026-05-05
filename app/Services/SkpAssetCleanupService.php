@@ -6,8 +6,8 @@ use App\Models\HasilKerja;
 use App\Models\Laporan;
 use App\Models\PerilakuKerja;
 use App\Models\Realisasi;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class SkpAssetCleanupService
 {
@@ -15,7 +15,9 @@ class SkpAssetCleanupService
     {
         $load = [
             'hasilKerja.indikatorKinerja.realisasi.buktiFoto',
+            'hasilKerja.lampiranFiles',
             'perilakuKerja.buktiPerilaku',
+            'perilakuKerja.lampiranFiles',
         ];
 
         if (Schema::hasColumn('bukti_foto', 'hasil_kerja_id')) {
@@ -58,14 +60,22 @@ class SkpAssetCleanupService
                 $hasilKerja->buktiFotoHasilKerja->pluck('file_path')->filter()->all(),
             );
         }
+
+        Storage::disk('public')->delete(
+            $hasilKerja->lampiranFiles->pluck('file_path')->filter()->all(),
+        );
     }
 
     public function cleanupPerilakuKerja(PerilakuKerja $perilakuKerja): void
     {
-        $perilakuKerja->loadMissing('buktiPerilaku');
+        $perilakuKerja->loadMissing(['buktiPerilaku', 'lampiranFiles']);
 
         Storage::disk('public')->delete(
             $perilakuKerja->buktiPerilaku->pluck('file_path')->filter()->all(),
+        );
+
+        Storage::disk('public')->delete(
+            $perilakuKerja->lampiranFiles->pluck('file_path')->filter()->all(),
         );
     }
 

@@ -8,6 +8,8 @@ use App\Models\Laporan;
 use App\Services\SkpAssetCleanupService;
 use App\Services\SyncHasilKerjaService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
@@ -16,8 +18,7 @@ class HasilKerjaController extends Controller
     public function __construct(
         protected SyncHasilKerjaService $syncHasilKerja,
         protected SkpAssetCleanupService $assetCleanup,
-    ) {
-    }
+    ) {}
 
     public function store(UpsertHasilKerjaRequest $request, Laporan $laporan): RedirectResponse
     {
@@ -69,5 +70,43 @@ class HasilKerjaController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Hasil kerja berhasil dihapus.']);
 
         return to_route('laporan.show', $laporan);
+    }
+
+    public function uploadLampiran(Request $request, string|int $id): RedirectResponse
+    {
+        $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['required', 'file', 'mimes:pdf', 'max:5120'],
+        ]);
+
+        $hasilKerja = HasilKerja::query()->with('laporan')->findOrFail($id);
+
+        $this->authorize('update', $hasilKerja->laporan);
+
+        $existingCount = $hasilKerja->lampiranFiles()->count();
+
+        foreach ($request->file('files', []) as $index => $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $sequence = $existingCount + $index + 1;
+            $filename = sprintf('lampiran-%d.pdf', $sequence);
+
+            $path = $file->storeAs(
+                'lampiran/'.$hasilKerja->id,
+                $filename,
+                'public',
+            );
+
+            $hasilKerja->lampiranFiles()->create([
+                'nama_file' => $filename,
+                'file_path' => $path,
+            ]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Lampiran berhasil diupload.']);
+
+        return to_route('laporan.show', $hasilKerja->laporan);
     }
 }

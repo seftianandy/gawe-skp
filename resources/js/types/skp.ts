@@ -18,6 +18,15 @@ export type BuktiItem = {
     url: string;
 };
 
+export type LampiranFileItem = {
+    id: number;
+    hasil_kerja_id?: number | null;
+    perilaku_kerja_id?: number | null;
+    nama_file: string;
+    file_path: string;
+    url: string;
+};
+
 export type RealisasiForm = {
     id: number | null;
     tanggal: string;
@@ -53,6 +62,7 @@ export type HasilKerjaForm = {
     bukti_foto: BuktiItem[];
     bukti_foto_baru: File[];
     hapus_bukti_foto: number[];
+    lampiran_files: LampiranFileItem[];
     indikators: IndikatorForm[];
 };
 
@@ -64,6 +74,7 @@ export type PerilakuKerjaForm = {
     bukti_perilaku: BuktiItem[];
     bukti_perilaku_baru: File[];
     hapus_bukti_perilaku: number[];
+    lampiran_files?: LampiranFileItem[];
 };
 
 export type LaporanListItem = {

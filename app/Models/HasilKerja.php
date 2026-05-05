@@ -61,4 +61,12 @@ class HasilKerja extends Model
     {
         return $this->hasMany(BuktiFoto::class, 'hasil_kerja_id');
     }
+
+    /**
+     * @return HasMany<LampiranFile, $this>
+     */
+    public function lampiranFiles(): HasMany
+    {
+        return $this->hasMany(LampiranFile::class);
+    }
 }

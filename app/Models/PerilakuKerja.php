@@ -38,4 +38,12 @@ class PerilakuKerja extends Model
     {
         return $this->hasMany(BuktiPerilaku::class, 'perilaku_id');
     }
+
+    /**
+     * @return HasMany<LampiranFile, $this>
+     */
+    public function lampiranFiles(): HasMany
+    {
+        return $this->hasMany(LampiranFile::class);
+    }
 }

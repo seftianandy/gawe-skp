@@ -277,9 +277,12 @@ const features = [
                     </div>
                     GaweSKP — Generate Laporan SKP ASN dengan AI
                 </div>
-                <p class="text-xs text-slate-600">
-                    Dibangun oleh TIM IT
-                </p>
+                <div class="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500">
+                    <Link href="/terms-of-service" class="transition hover:text-white">Terms of Service</Link>
+                    <Link href="/privacy-policy" class="transition hover:text-white">Privacy Policy</Link>
+                    <span class="text-slate-700">|</span>
+                    <p class="text-slate-600">Dibangun oleh TIM IT</p>
+                </div>
             </div>
         </footer>
 

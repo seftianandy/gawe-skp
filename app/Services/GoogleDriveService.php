@@ -9,7 +9,6 @@ use App\Models\User;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
 use Google\Service\Drive\DriveFile;
-use Illuminate\Support\Carbon;
 use RuntimeException;
 
 class GoogleDriveService
@@ -36,17 +35,28 @@ class GoogleDriveService
         return (string) $uploadedFile->id;
     }
 
-    public function uploadHasilKerjaPdf(User $user, Laporan $laporan, $hasilKerja, string $localPath)
+    public function uploadHasilKerjaPdf(User $user, Laporan $laporan, HasilKerja $hasilKerja, string $localPath): string
     {
-        // Mengambil root folder dari kolom yang baru kita buat
-        $rootFolder = $user->google_drive_root ?? 'SKP Laporan';
+        return $this->uploadFile(
+            $user,
+            $localPath,
+            $this->hasilKerjaFileName($laporan, $hasilKerja),
+            $this->hasilKerjaFolderPath($laporan, $user->google_drive_root ?? 'SKP Laporan', $hasilKerja),
+        );
+    }
 
-        $basePath = $this->baseFolderPath($laporan, $rootFolder);
-        $bookNumber = min(max($this->resolveHasilKerjaSequence($laporan, $hasilKerja), 1), 3);
+    public function uploadHasilKerjaLampiranFiles(User $user, Laporan $laporan, HasilKerja $hasilKerja): void
+    {
+        $folderPath = $this->hasilKerjaFolderPath($laporan, $user->google_drive_root ?? 'SKP Laporan', $hasilKerja);
 
-        $folderPath = implode('/', array_merge($basePath, ["Buku Kerja $bookNumber"]));
-
-        return $this->uploadFile($user, $localPath, $this->hasilKerjaFileName($laporan, $hasilKerja), $folderPath);
+        foreach ($hasilKerja->lampiranFiles as $lampiran) {
+            $this->uploadFile(
+                $user,
+                storage_path('app/public/'.$lampiran->file_path),
+                $lampiran->nama_file,
+                $folderPath,
+            );
+        }
     }
 
     public function uploadPerilakuPdf(User $user, Laporan $laporan, PerilakuKerja $perilaku, string $localPath): string
@@ -56,7 +66,7 @@ class GoogleDriveService
         $basePath = $this->baseFolderPath($laporan, $rootFolder);
         $folderPath = implode('/', array_merge($basePath, [
             'Perilaku BerAKHLAK',
-            $this->sanitizeFolderName($perilaku->nama)
+            $this->sanitizeFolderName($perilaku->nama),
         ]));
 
         return $this->uploadFile($user, $localPath, $this->perilakuFileName($laporan, $perilaku), $folderPath);
@@ -72,13 +82,25 @@ class GoogleDriveService
 
         return [
             $rootFolderName,
-            $tanggal->translatedFormat('F') // Contoh: "Mei"
+            $tanggal->translatedFormat('F'), // Contoh: "Mei"
         ];
+    }
+
+    protected function hasilKerjaFolderPath(Laporan $laporan, string $rootFolderName, HasilKerja $hasilKerja): string
+    {
+        $basePath = $this->baseFolderPath($laporan, $rootFolderName);
+        $folderName = $this->sanitizeFolderName(
+            $hasilKerja->indikatorKinerjaMaster?->nama_indikator
+                ?? $hasilKerja->indikatorKinerja->first()?->deskripsi
+                ?? sprintf('hasil-kerja-%d', $hasilKerja->id),
+        );
+
+        return implode('/', array_merge($basePath, [$folderName]));
     }
 
     public function makeDriveService(User $user): GoogleDrive
     {
-        $client = new GoogleClient();
+        $client = new GoogleClient;
         $client->setClientId(config('services.google.client_id'));
         $client->setClientSecret(config('services.google.client_secret'));
         $client->setRedirectUri(config('services.google.redirect'));
@@ -183,25 +205,9 @@ class GoogleDriveService
         ];
     }
 
-    protected function resolveHasilKerjaSequence(Laporan $laporan, HasilKerja $hasilKerja): int
-    {
-        $orderedIds = $laporan->hasilKerja()
-            ->orderBy('id')
-            ->pluck('id')
-            ->values();
-
-        $index = $orderedIds->search($hasilKerja->id);
-
-        return $index === false ? 1 : $index + 1;
-    }
-
     protected function hasilKerjaFileName(Laporan $laporan, HasilKerja $hasilKerja): string
     {
-        $namaIndikator = $hasilKerja->indikatorKinerjaMaster?->nama_indikator
-            ?? $hasilKerja->indikatorKinerja->first()?->deskripsi
-            ?? sprintf('hasil-kerja-%d', $hasilKerja->id);
-
-        return sprintf('hasil-kerja-%d-%s.pdf', $laporan->id, str($namaIndikator)->slug());
+        return 'laporan.pdf';
     }
 
     protected function perilakuFileName(Laporan $laporan, PerilakuKerja $perilakuKerja): string
